@@ -17,7 +17,7 @@
 *
 *  Authors Notes:
 *  For more information on the Zigbee Monitor Driver see:
-*  Original posting on Hubitat Community forum: 
+*  Original posting on Hubitat Community forum: https://community.hubitat.com/t/release-pending-placeholder-for-upcoming-release/127676
 *  Zigbee Monitor Documentation: N/A
 *
 *  Gary Milne - November 10th, 2023 @ 12:32 PM
@@ -1218,7 +1218,7 @@ void updateDeviceAttributes(section){
         myMap.each { repeater ->
             isParent = false
             if (!processedRepeaters.contains(repeater.value.netAddr)) {
-                //Identify if it is the Parent in which case we will append and *.
+                //Identify if it is the Parent in which case we will append an *.
                 if (repeater.value.relationship == "Parent") isParent = true
                 // Show LQI first and then device name
                 if (neighborSortOrder != "2") {
