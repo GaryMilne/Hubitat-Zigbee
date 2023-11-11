@@ -9,29 +9,9 @@
       "id": "859bd45a-ea73-46d8-b9fd-d8a5450e87ed",
       "name": "Zigbee Monitor Driver",
       "namespace": "garyjmilne",
-      "location": "https://raw.githubusercontent.com/GaryMilne/Hubitat-Zigbee/main/Zigbee%20Monitor%20Driver.groovy",
+      "location": "https://raw.githubusercontent.com/GaryMilne/Hubitat-Zigbee/main/Zigbee_Monitor_Driver.groovy",
       "required": true,
       "version": "1.0.0"
-    }
-  ]
-}
-
-
-
-{
-  "packageName": "Precipitation and Weather Monitor for National Weather Service Data",
-  "author": "Gary J. Milne",
-  "version": "1.0.2",
-  "minimumHEVersion": "0.0",
-  "dateReleased": "2022-07-17",
-  "drivers": [
-    {
-      "id": "c38ea354-b968-411a-99ae-58e75178c4ba",
-      "name": "Precipitation and Weather Monitor for NWS Data",
-      "namespace": "garyjmilne",
-      "location": "https://raw.githubusercontent.com/GaryMilne/Hubitat-Apps/main/Precipitation_Monitor_for_NWS.groovy",
-      "required": true,
-      "version": "1.0.2"
     }
   ]
 }
