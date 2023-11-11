@@ -17,7 +17,7 @@
 *
 *  Authors Notes:
 *  For more information on the Zigbee Monitor Driver see:
-*  Original posting on Hubitat Community forum: https://community.hubitat.com/t/release-pending-placeholder-for-upcoming-release/127676
+*  Original posting on Hubitat Community forum: https://community.hubitat.com/t/release-zigbee-monitor-driver-like-xray-glasses-for-zigbee-repeaters-and-simple-switches/127676
 *  Zigbee Monitor Documentation: N/A
 *
 *  Gary Milne - November 10th, 2023 @ 12:32 PM
@@ -33,7 +33,7 @@ import java.text.SimpleDateFormat
 @Field static final driverBuild = 42
 
 metadata {
-    definition (name: "Zigbee Monitor Driver", namespace: "garyjmilne", author: "Gary J. Milne", singleThreaded:true, importUrl: "https://raw.githubusercontent.com/GaryMilne/Hubitat-TileBuilder/main/Tile_Builder_Parent.groovy",) {
+    definition (name: "Zigbee Monitor Driver", namespace: "garyjmilne", author: "Gary J. Milne", singleThreaded:true, importUrl: "https://raw.githubusercontent.com/GaryMilne/Hubitat-Zigbee/main/Zigbee%20Monitor%20Driver.groovy",) {
         capability "Actuator"
         capability "Switch"
         capability "HealthCheck"
@@ -102,7 +102,7 @@ metadata {
     
      section("Configure the Inputs"){
         //Hub
-        input name: "hublink", type: "hidden", title: bold("Hub: ") + "<a href='https://www.gitpod.io' target='_blank'>Community Thread Link</a>",
+        input name: "hublink", type: "hidden", title: bold("Hub: ") + "<a href='https://community.hubitat.com/t/release-zigbee-monitor-driver-like-xray-glasses-for-zigbee-repeaters-and-simple-switches/127676' target='_blank'>Community Thread Link</a>",
                 description: italic("This driver has multiple modes of operation. It can read a variety of Zigbee information from the hub and the device as an aid to monitoring and troubleshooting. The above link will take you to the community thread where you will find documentation and support.")
         input name: "hubDataCollectionMode", type: "enum", title: bold("Hub: ") + dodgerBlue("Data Collection Mode:"), description: italic("This setting determines which types of data will be collected from Hub.)"),
                 options: [ [0:"No Data Collection"],[1:"Collect Only Zigbee Address Information (for name resolution)"],[2:"Collect All Zigbee Information"] ], defaultValue: 1, required: true
@@ -110,7 +110,7 @@ metadata {
                 options: [ [0:" Never"],[1:" 1 minute"],[2:" 2 minutes"],[5:" 5 minutes"],[10:"10 minutes"],[15:"15 minutes"],[30:"30 minutes"],[60:" 1 hour"],[120:" 2 hours"],[180:" 3 hours"],[360:" 6 hours"],[720:" 12 hours"],[1440:" 24 hours"] ], defaultValue: 1440, required: true
         
         //Device
-        input name: "devicelink", type: "hidden", title: bold("Device: ") + "<a href='https://www.gitpod.io' target='_blank'>Device Compatibility Link</a>",
+        input name: "devicelink", type: "hidden", title: bold("Device: ") + "<a href='https://community.hubitat.com/t/release-zigbee-monitor-driver-like-xray-glasses-for-zigbee-repeaters-and-simple-switches/127676/2' target='_blank'>Device Compatibility Link</a>",
                 description: italic("This driver uses 'generic' zigbee calls and will work on any repeater/switch device that has implemented support for Zigbee management requests. The above link will take you to the community thread where any specific device compatibility is discussed.")
         input name: "deviceDataCollectionMode", type: "enum", title: bold("Device: ") + dodgerBlue("Data Collection Mode:"), description: italic("This setting determines which types of data will be collected from the device.)"),
                 options: [ [0:"No Data Collection"],[1:"Collect Only Neighbor Data"],[2:"Collect Only Routing Data"],[3:"Collect Neighbor & Routing Data"]], defaultValue: 1, required: true
