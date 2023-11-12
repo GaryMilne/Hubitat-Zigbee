@@ -13,14 +13,15 @@
 *
 *  Zigbee Repeater Monitor - CHANGELOG
 *  Version 1.0.0 - Initial Release
-*  File Version 42
+*  Version 1.0.1 - Changed endpointId from static "0x01" to dynamic using "0x${device.endpointId}"
 *
 *  Authors Notes:
 *  For more information on the Zigbee Monitor Driver see:
 *  Original posting on Hubitat Community forum: https://community.hubitat.com/t/release-zigbee-monitor-driver-like-xray-glasses-for-zigbee-repeaters-and-simple-switches/127676
 *  Zigbee Monitor Documentation: N/A
 *
-*  Gary Milne - November 10th, 2023 @ 12:32 PM
+*  Gary Milne - November 12th, 2023 @ 5:23 PM
+*  Build Version 43
 *
 **/
 
@@ -29,8 +30,8 @@ import groovy.transform.Field
 import java.text.SimpleDateFormat
 @Field def ZIGBEE_ERROR_MAP = ["00":"SUCCESS", "80":"INV_REQUESTTYPE", "81":"DEVICE_NOT_FOUND", "82":"INVALID_EP", "83":"NOT_ACTIVE", "84":"NOT_SUPPORTED", "85":"TIMEOUT", "86":"NO_MATCH", "88":"NO_ENTRY", "89":"NO_DESCRIPTOR", "8A":"INSUFFICIENT_SPACE", "8B":"NOT_PERMITTED", "8C":"TABLE_FULL", "8D":"NOT_AUTHORIZED", "8E":"DEVICE_BINDING_TABLE_FULL"]
 @Field def dataSeparatorMap = [0:",", 1:";", 2:":", 3:"|"]
-@Field static final driverVersion = "<b>Zigbee Monitor Driver v1.0.0 (11/10/23)</b>"
-@Field static final driverBuild = 42
+@Field static final driverVersion = "<b>Zigbee Monitor Driver v1.0.1 (11/12/23)</b>"
+@Field static final driverBuild = 43
 
 metadata {
     definition (name: "Zigbee Monitor Driver", namespace: "garyjmilne", author: "Gary J. Milne", singleThreaded:true, importUrl: "https://raw.githubusercontent.com/GaryMilne/Hubitat-Zigbee/main/Zigbee_Monitor_Driver.groovy",) {
@@ -190,13 +191,6 @@ def configure() {
     //cmds.add "he raw ${device.deviceNetworkId} 0x0000 0x0000 0x0005 {00 ${zigbee.swapOctets(device.deviceNetworkId)}} {0x0000}"
     hubitat.device.HubMultiAction hubMultiAction = new hubitat.device.HubMultiAction(cmds, hubitat.device.Protocol.ZIGBEE) 
     sendHubCommand(hubMultiAction)
-    
-    //hubitat.device.HubMultiAction hubMultiAction = new hubitat.device.HubMultiAction(cmds, hubitat.device.Protocol.ZIGBEE) 
-    //sendHubCommand(new hubitat.device.HubMultiAction(cmds, hubitat.device.Protocol.ZIGBEE) )
-    
-    //cmd = "he raw $device.deviceNetworkId 0x01 0x00 0x0031 { 01 $startIndex$device.deviceNetworkId } { 0000 }"
-    //hubitat.device.HubAction hubAction = new hubitat.device.HubAction(cmd, hubitat.device.Protocol.ZIGBEE) 
-    //sendHubCommand(hubAction)
 }
                                                       
 //Cleans up the attributes used to display the status of data collection. It is called from Updated() and Initialise()                  
@@ -231,8 +225,8 @@ def updateDisplay(){
 //Sends out a Zigbee command to the device. We don't care what the response is as long as something comes back to the parse function.
 def ping(){
     log("Ping","Issuing command: DNI-${device.deviceNetworkId} ID-{${device.zigbeeId}}",1)
-    //We use this version of the command as it works on both ZBee and regular devices.
-    cmd = "zdo bind ${device.deviceNetworkId} 0x01 0x01 0x0000 {${device.zigbeeId}} {}"
+    //We use this version of the command as it works on both XBee and regular devices.
+    cmd = "zdo bind ${device.deviceNetworkId} 0x${device.endpointId} 0x01 0x0000 {${device.zigbeeId}} {}"
     return cmd
 }
                                                     
@@ -778,7 +772,7 @@ def getNeighbors(){
 
 //This function places calls to the Zigbee network at a given startIndex.
 def getNeighborsData(startIndex){   
-    cmd = "he raw $device.deviceNetworkId 0x01 0x00 0x0031 { 01 $startIndex$device.deviceNetworkId } { 0000 }"
+    cmd = "he raw $device.deviceNetworkId 0x${device.endpointId} 0x00 0x0031 { 01 $startIndex$device.deviceNetworkId } { 0000 }"
     hubitat.device.HubAction hubAction = new hubitat.device.HubAction(cmd, hubitat.device.Protocol.ZIGBEE) 
     sendHubCommand(hubAction)
 }
@@ -921,7 +915,7 @@ def getRoutes(){
 
 //This function places calls to the device for routing information at a given startIndex.
 def getDeviceRoutingData(startIndex){
-    cmd = "he raw $device.deviceNetworkId 0x01 0x00 0x0032 { 01 $startIndex$device.deviceNetworkId } { 0000 }"
+    cmd = "he raw $device.deviceNetworkId 0x${device.endpointId} 0x00 0x0032 { 01 $startIndex$device.deviceNetworkId } { 0000 }"
     hubitat.device.HubAction hubAction = new hubitat.device.HubAction(cmd, hubitat.device.Protocol.ZIGBEE) 
     sendHubCommand(hubAction)
 }
@@ -1056,6 +1050,7 @@ def parse(String description) {
 
     //Get the basic components of the Zigbee data.
     def map = zigbee.parseDescriptionAsMap(description)
+	log("parse", "Zigbee Data is: ${map}", 2)
     def cluster = map.cluster
 	def hexValue = map.value
 	def attrId = map.attrId
@@ -1082,7 +1077,6 @@ def parse(String description) {
                     break
             }
         log("parse", "Received Response to Basic query", 1)
-        log("parse", "Map Data is: ${map.data}", 2)
     }
         
     if (map?.clusterInt == 0x8031) {  // ZDO Management LQI Response
@@ -1343,4 +1337,3 @@ String red(s) { return '<font color = "red">' + s + '</font>'}
 String green(s) { return '<font color = "green">' + s + '</font>'}
 String mark(s) { return '<mark>' + s + '</mark>'}
 String markred(s) { return '<mark>' + red(s) + "</mark>" } 
-
