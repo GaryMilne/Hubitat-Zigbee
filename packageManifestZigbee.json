@@ -1,9 +1,9 @@
 {
   "packageName": "Zigbee Monitor Driver",
   "author": "Gary J. Milne",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "minimumHEVersion": "0.0",
-  "dateReleased": "2023-11-12",
+  "dateReleased": "2023-11-13",
   "drivers": [
     {
       "id": "859bd45a-ea73-46d8-b9fd-d8a5450e87ed",
@@ -11,7 +11,7 @@
       "namespace": "garyjmilne",
       "location": "https://raw.githubusercontent.com/GaryMilne/Hubitat-Zigbee/main/Zigbee_Monitor_Driver.groovy",
       "required": true,
-      "version": "1.0.1"
+      "version": "1.0.2"
     }
   ]
 }
