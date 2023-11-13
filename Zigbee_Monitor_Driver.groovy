@@ -14,14 +14,15 @@
 *  Zigbee Repeater Monitor - CHANGELOG
 *  Version 1.0.0 - Initial Release
 *  Version 1.0.1 - Changed endpointId from static "0x01" to dynamic using "0x${device.endpointId}"
+*  Version 1.0.2 - Updated getHubInfo() to support alternate path "/hub/zigbeeDetails/json" for Zigbee information being introduced in > "2.3.7.1"
 *
 *  Authors Notes:
 *  For more information on the Zigbee Monitor Driver see:
 *  Original posting on Hubitat Community forum: https://community.hubitat.com/t/release-zigbee-monitor-driver-like-xray-glasses-for-zigbee-repeaters-and-simple-switches/127676
 *  Zigbee Monitor Documentation: N/A
 *
-*  Gary Milne - November 12th, 2023 @ 5:23 PM
-*  Build Version 43
+*  Gary Milne - November 12th, 2023 @ 7:24 PM
+*  Build Version 44
 *
 **/
 
@@ -30,8 +31,8 @@ import groovy.transform.Field
 import java.text.SimpleDateFormat
 @Field def ZIGBEE_ERROR_MAP = ["00":"SUCCESS", "80":"INV_REQUESTTYPE", "81":"DEVICE_NOT_FOUND", "82":"INVALID_EP", "83":"NOT_ACTIVE", "84":"NOT_SUPPORTED", "85":"TIMEOUT", "86":"NO_MATCH", "88":"NO_ENTRY", "89":"NO_DESCRIPTOR", "8A":"INSUFFICIENT_SPACE", "8B":"NOT_PERMITTED", "8C":"TABLE_FULL", "8D":"NOT_AUTHORIZED", "8E":"DEVICE_BINDING_TABLE_FULL"]
 @Field def dataSeparatorMap = [0:",", 1:";", 2:":", 3:"|"]
-@Field static final driverVersion = "<b>Zigbee Monitor Driver v1.0.1 (11/12/23)</b>"
-@Field static final driverBuild = 43
+@Field static final driverVersion = "<b>Zigbee Monitor Driver v1.0.2 (11/12/23)</b>"
+@Field static final driverBuild = 44
 
 metadata {
     definition (name: "Zigbee Monitor Driver", namespace: "garyjmilne", author: "Gary J. Milne", singleThreaded:true, importUrl: "https://raw.githubusercontent.com/GaryMilne/Hubitat-Zigbee/main/Zigbee_Monitor_Driver.groovy",) {
@@ -42,7 +43,7 @@ metadata {
         //Commands
         command "configure", [ [name:"⚙️ Configure: Retrieves basic information from the device and populates the Driver Details Data area. This is optional."]]
         command "getDeviceInfo", [ [name:"🔍 Get Device Neighbors and Routes tables from the device and display information based upon the the preferences section below. Note: Not all device support retrieval of this data. See Help in preferences section."]]
-        command "getHubInfo", [ [name:"📜 Get Hub Info: This command initiates two http requests to the hub. 1️⃣ Get JSON data from: /hub2/zigbeeInfo. 2️⃣ Get JSON data from: /hub/zigbee/getChildAndRouteInfoJson. \
+        command "getHubInfo", [ [name:"📜 Get Hub Info: This command initiates two http requests to the hub. 1️⃣ Get JSON data from: /hub2/zigbeeInfo or /hub/zigbeeDetails/json. 2️⃣ Get JSON data from: /hub/zigbee/getChildAndRouteInfoJson. \
                                  Information received is displayed according to the preferences section below."]]
         command "off", [ [name:"🔴 Switch Off: Turns the Zigbee switch OFF -- OR -- Turns OFF the Zigbee device logging. See preferences."]]
         command "on", [ [name:"🟢 Switch On: Turns the Zigbee switch ON -- OR -- Turns ON the Zigbee device logging. See preferences."]]
@@ -482,24 +483,28 @@ def getHubInfo() {
     log ("getHubInfo", "Information request initiated.", 1)
     def myJson = new JsonSlurper()
     
-    //Start Get data from hub2/zigbee and put it in hubData1. This contains the long and short Zigbee ID's along with the device name and is used for name resolution.
+    //Start Get data from /hub2/zigbee or /hub/zigbeeDetails/json and put it in hubData1. This contains the long and short Zigbee ID's along with the device name and is used for name resolution.
     if (hubDataCollectionMode == "1" || hubDataCollectionMode == "2"){
         try{
-            def URI = "http://127.0.0.1:8080/hub2/zigbeeInfo"
+            def loopback = "http://127.0.0.1:8080"
+            def URI = ""
+            if( location.hub.firmwareVersionString > "2.3.7.1") URI = loopback + "/hub/zigbeeDetails/json"
+            else URI = loopback + "/hub2/zigbeeInfo"
+
             def requestParams = [ uri:URI, contentType: "application/json" ]
             httpGet(requestParams)
                 { response ->   
                     if (response?.status == 200){        //200 is an OK.
-                        log ("getHubInfo", "Information received from http://127.0.0.1:8080/hub2/zigbeeInfo: ${response?.data}", 2)
+                        log ("getHubInfo", "Information received from ${URI}: ${response?.data}", 2)
                         //Now pass this json data to get saved to state.
                         hubInfoZigbeeResponse1(response?.data)
                     }
-                    else { log ("getHubInfo", "Error retrieving data from /hub2/zigbeeInfo: ${response?.status}.", 0) } 
+                    else { log ("getHubInfo", "Error retrieving data from ${URI}: ${response?.status}.", 0) } 
                 }    
         }    
-        catch(Exception e) { log("getHubInfo","Error $e encountered retrieving data from: http://127.0.0.1:8080/hub2/zigbeeInfo", 0) }
+        catch(Exception e) { log("getHubInfo","Error $e encountered retrieving data from: ${URI}", 0) }
     }
-    //End Get data from hub2/zigbee
+    //End Get data from /hub2/zigbee or /hub/zigbeeDetails/json
     
     //Start Get data from hub/zigbee/getChildAndRouteInfoJson and put it in hubData2. This contains the Hubs Zigbee Child info and Route table. Only has the short Zigbee id.
     if (hubDataCollectionMode == "2"){
@@ -1077,7 +1082,7 @@ def parse(String description) {
                     break
             }
         log("parse", "Received Response to Basic query", 1)
-    }
+	}
         
     if (map?.clusterInt == 0x8031) {  // ZDO Management LQI Response
         def hexString = map.data.join("")
