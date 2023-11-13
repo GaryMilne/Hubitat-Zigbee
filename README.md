@@ -1,2 +1,2 @@
 # Hubitat-Zigbee
-Repository for Zigbee Related Drivers and Apps
+Repository for Zigbee Monitor Driver
