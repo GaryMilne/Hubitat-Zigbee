@@ -15,14 +15,16 @@
 *  Version 1.0.0 - Initial Release
 *  Version 1.0.1 - Changed endpointId from static "0x01" to dynamic using "0x${device.endpointId}"
 *  Version 1.0.2 - Updated getHubInfo() to support alternate path "/hub/zigbeeDetails/json" for Zigbee information being introduced in > "2.3.7.1"
-*
+*  Version 1.0.3 - Add function compareVersions() to do a precise version comparison between the current firmware version on the box and a reference version, in this case "2.3.7.1".
+*  Version 1.0.4 - Updated logic for checking online\offline status so that a device is marked online as soon as any traffic is received.
+* 
 *  Authors Notes:
 *  For more information on the Zigbee Monitor Driver see:
 *  Original posting on Hubitat Community forum: https://community.hubitat.com/t/release-zigbee-monitor-driver-like-xray-glasses-for-zigbee-repeaters-and-simple-switches/127676
 *  Zigbee Monitor Documentation: N/A
 *
-*  Gary Milne - November 12th, 2023 @ 7:24 PM
-*  Build Version 44
+*  Gary Milne - January 6th, 2023 @ 10:28 AM
+*  Build Version 46
 *
 **/
 
@@ -31,7 +33,7 @@ import groovy.transform.Field
 import java.text.SimpleDateFormat
 @Field def ZIGBEE_ERROR_MAP = ["00":"SUCCESS", "80":"INV_REQUESTTYPE", "81":"DEVICE_NOT_FOUND", "82":"INVALID_EP", "83":"NOT_ACTIVE", "84":"NOT_SUPPORTED", "85":"TIMEOUT", "86":"NO_MATCH", "88":"NO_ENTRY", "89":"NO_DESCRIPTOR", "8A":"INSUFFICIENT_SPACE", "8B":"NOT_PERMITTED", "8C":"TABLE_FULL", "8D":"NOT_AUTHORIZED", "8E":"DEVICE_BINDING_TABLE_FULL"]
 @Field def dataSeparatorMap = [0:",", 1:";", 2:":", 3:"|"]
-@Field static final driverVersion = "<b>Zigbee Monitor Driver v1.0.2 (11/12/23)</b>"
+@Field static final driverVersion = "<b>Zigbee Monitor Driver v1.0.4 (1/6/24)</b>"
 @Field static final driverBuild = 44
 
 metadata {
@@ -39,6 +41,7 @@ metadata {
         capability "Actuator"
         capability "Switch"
         capability "HealthCheck"
+        capability "SignalStrength"
         
         //Commands
         command "configure", [ [name:"⚙️ Configure: Retrieves basic information from the device and populates the Driver Details Data area. This is optional."]]
@@ -291,7 +294,7 @@ def initialize(){
     if (state.hubChildandRouteInfo.children == null ) state.hubChildandRouteInfo.children = [:] 
     if (state.hubChildandRouteInfo.devices == null ) state.hubChildandRouteInfo.devices = [:] 
     
-    //This group is for information taken from this URL:/hub2/zigbeeInfo
+    //This group is for information taken from /hub2/zigbeeInfo or /hub/zigbeeDetails/json
     if (state.hubZigbeeInfo == null) state.hubZigbeeInfo = [:]
     if (state.hubZigbeeInfo.zbDevices == null ) { state.hubZigbeeInfo.zbDevices = [:] }
     if (state.hubZigbeeInfo.zbProperties == null ) { state.hubZigbeeInfo.zbProperties = [:] }
@@ -362,7 +365,7 @@ def wipe(category){
         log ("Wipe:","All State and Current State variables have been wiped.", 0)
         //This group is for information taken from this URL:/hub/zigbee/getChildAndRouteInfoJson
         state.hubChildandRouteInfo = [:]; state.hubChildandRouteInfo.routes = [:]; state.hubChildandRouteInfo.neighbors = [:]; state.hubChildandRouteInfo.children = [:] ; state.hubChildandRouteInfo.devices = [:] 
-        //This group is for information taken from this URL:/hub2/zigbeeInfo
+        //This group is for information taken from /hub2/zigbeeInfo or /hub/zigbeeDetails/json
         state.hubZigbeeInfo = [:]; state.hubZigbeeInfo.zbDevices = [:]; state.hubZigbeeInfo.zbProperties = [:]
         //This group is for information taken from the device
         state.device = [:]; state.device.routes = [:]; state.device.neighbors = [:]; state.device.controlN = [:]; state.device.controlR = [:]    
@@ -386,26 +389,25 @@ def wipe(category){
 //Performs a periodic check to see if there has been recent activity. When it gets within checkInterval minutes of the inactivityLimit a ping() command is issued to test the operation.
 //Note: This command needs a def vs void because the ping() command has a return value and will not work when using the latter.
 def healthCheck(){
-    int interval = device.currentValue('checkInterval')
-    maxElapsed = inactivityLimit.toInteger() * 60 * 1000
-    elapsed = now() - state.data.deviceLastZigbeeActivityms
-    log("healthCheck","Time since last activity is $elapsed",1)
+    int checkIntervalms = device.currentValue('checkInterval') * 60 * 1000
+    maxInactivity = inactivityLimit.toInteger() * 60 * 1000
+    currentInactivity = now() - state.data.deviceLastZigbeeActivityms
+    log("healthCheck","Time since last activity is $currentInactivity ms.", 1)
     
-    //Test to see if we are within 15 minutes of the Inactivity Limit being reached.
-    if (elapsed + interval * 60 * 1000 < maxElapsed ) {
+    //If the currentInactivity plus the checkInterval is less than maxInactivity we don't need to do anything except mark it online.
+    if ( (currentInactivity + checkIntervalms )  < maxInactivity ) {
         sendEvent(name: "healthStatus", value: "online") 
-        log("healthCheck","There is more than $interval minutes remaining. Do nothing.", 2)
+        log("healthCheck","There is more than $checkIntervalms ms remaining. Do nothing.", 2)
     }
     
-    //Test to see if we are within 15 minutes of the Inactivity Limit being reached.
-    if (elapsed + interval * 60 * 1000 >= maxElapsed ) {
-        sendEvent(name: "healthStatus", value: "online") 
-        log("healthCheck","There is less than $interval minutes remaining. Issuing 'ping' command.", 2)
+    //If the currentInactivity plus the checkInterval is greater than maxInactivity we will initiate a ping test and the parse() command will mark the device online.
+    if ( ( currentInactivity + checkIntervalms ) >= maxInactivity ) {
+        log("healthCheck","There is less than $checkIntervalms ms remaining. Issuing 'ping' command.", 2)
         ping()
     }
     
     //Test to see if we have exceeded the Inactivity Limit.
-    if (elapsed >= maxElapsed ) {
+    if (currentInactivity >= maxInactivity ) {
         sendEvent(name: "healthStatus", value: "offline") 
         log("healthCheck","This device has had no Zigbee activity for a period that exceeds the inactivity limit of $interval minutes. The Health Status of the device is being marked as offline. It will be changed to online when Zigbee traffic is detected.", 0)
     }
@@ -488,8 +490,10 @@ def getHubInfo() {
         try{
             def loopback = "http://127.0.0.1:8080"
             def URI = ""
-            if( location.hub.firmwareVersionString > "2.3.7.1") URI = loopback + "/hub/zigbeeDetails/json"
+            
+            if ( compareVersions(location.hub.firmwareVersionString, "2.3.7.1") >= 0 ) URI = loopback + "/hub/zigbeeDetails/json"
             else URI = loopback + "/hub2/zigbeeInfo"
+            log.info ("getHubInfo", "Using URI: $URI",1)
 
             def requestParams = [ uri:URI, contentType: "application/json" ]
             httpGet(requestParams)
@@ -527,7 +531,7 @@ def getHubInfo() {
     
 }
    
-//Receives the json data requested from /hub2/zigbeeInfo. This contains the full Zigbee ID's and is used for name resolution.
+//Receives the json data requested from /hub2/zigbeeInfo or /hub/zigbeeDetails/json. This contains the full Zigbee ID's and is used for name resolution.
 void hubInfoZigbeeResponse1(myData) {
     tmpDevices = myData.zbDevices
     //Remove some unwanted fields
@@ -1052,6 +1056,8 @@ def parse(String description) {
     //Update state to indicate the last time a Zigbee message was received. This is used in conjunction with checking online status.
     def date = new Date()
     state.data = [deviceLastZigbeeActivityms: now(), deviceLastZigbeeActivity: date.format("E @ HH:mm:ss")]
+    //If the Repeater was marked as offline then change it to online.
+    if ( device.currentValue('healthStatus') == "offline" ) sendEvent(name: "healthStatus", value: "online") 
 
     //Get the basic components of the Zigbee data.
     def map = zigbee.parseDescriptionAsMap(description)
@@ -1319,7 +1325,23 @@ String reverseByteOrder(String input) {
     }   
     return output.join('')
 }
+                           
+//Compare two firmware versions by comparing each part of the version number                        
+def compareVersions(version1, version2) {
+    def v1 = version1.tokenize('.').collect { it as Integer }
+    def v2 = version2.tokenize('.').collect { it as Integer }
 
+    // Compare each level of the version numbers
+    for (int i = 0; i < Math.min(v1.size(), v2.size()); i++) {
+        def compareResult = v1[i] <=> v2[i]
+        if (compareResult != 0) {
+            return compareResult
+        }
+    }
+    // If all levels are equal, compare the length of version numbers
+    return v1.size() <=> v2.size()
+}
+                           
 //Log status messages
 private log(name, message, int loglevel){
     int threshold = 0
