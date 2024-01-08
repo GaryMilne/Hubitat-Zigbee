@@ -1,3 +1,3 @@
 # Hubitat-Zigbee
 Repository for Zigbee Monitor Driver<br>
-Current Version 1.0.2
+Current Version 1.0.4
