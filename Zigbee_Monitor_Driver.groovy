@@ -17,14 +17,16 @@
 *  Version 1.0.2 - Updated getHubInfo() to support alternate path "/hub/zigbeeDetails/json" for Zigbee information being introduced in > "2.3.7.1"
 *  Version 1.0.3 - Add function compareVersions() to do a precise version comparison between the current firmware version on the box and a reference version, in this case "2.3.7.1".
 *  Version 1.0.4 - Updated logic for checking online\offline status so that a device is marked online as soon as any traffic is received.
+*  Version 1.0.5 - Fixed error on line 502 wich incorrectly calls log.info(...) when it should be log(...).
+*  Version 1.0.6 - Added logica to handle a change in the JSON structure from zbDevices to devices at line 540.
 * 
 *  Authors Notes:
 *  For more information on the Zigbee Monitor Driver see:
 *  Original posting on Hubitat Community forum: https://community.hubitat.com/t/release-zigbee-monitor-driver-like-xray-glasses-for-zigbee-repeaters-and-simple-switches/127676
 *  Zigbee Monitor Documentation: N/A
 *
-*  Gary Milne - January 6th, 2023 @ 10:28 AM
-*  Build Version 46
+*  Gary Milne - January 24th, 2023 @ 2:26 PM
+*  Build Version 48
 *
 **/
 
@@ -33,8 +35,8 @@ import groovy.transform.Field
 import java.text.SimpleDateFormat
 @Field def ZIGBEE_ERROR_MAP = ["00":"SUCCESS", "80":"INV_REQUESTTYPE", "81":"DEVICE_NOT_FOUND", "82":"INVALID_EP", "83":"NOT_ACTIVE", "84":"NOT_SUPPORTED", "85":"TIMEOUT", "86":"NO_MATCH", "88":"NO_ENTRY", "89":"NO_DESCRIPTOR", "8A":"INSUFFICIENT_SPACE", "8B":"NOT_PERMITTED", "8C":"TABLE_FULL", "8D":"NOT_AUTHORIZED", "8E":"DEVICE_BINDING_TABLE_FULL"]
 @Field def dataSeparatorMap = [0:",", 1:";", 2:":", 3:"|"]
-@Field static final driverVersion = "<b>Zigbee Monitor Driver v1.0.4 (1/6/24)</b>"
-@Field static final driverBuild = 44
+@Field static final driverVersion = "<b>Zigbee Monitor Driver v1.0.6 (1/24/24)</b>"
+@Field static final driverBuild = 48
 
 metadata {
     definition (name: "Zigbee Monitor Driver", namespace: "garyjmilne", author: "Gary J. Milne", singleThreaded:true, importUrl: "https://raw.githubusercontent.com/GaryMilne/Hubitat-Zigbee/main/Zigbee_Monitor_Driver.groovy",) {
@@ -493,7 +495,7 @@ def getHubInfo() {
             
             if ( compareVersions(location.hub.firmwareVersionString, "2.3.7.1") >= 0 ) URI = loopback + "/hub/zigbeeDetails/json"
             else URI = loopback + "/hub2/zigbeeInfo"
-            log.info ("getHubInfo", "Using URI: $URI",1)
+            log ("getHubInfo", "Using URI: $URI",1)
 
             def requestParams = [ uri:URI, contentType: "application/json" ]
             httpGet(requestParams)
@@ -533,7 +535,12 @@ def getHubInfo() {
    
 //Receives the json data requested from /hub2/zigbeeInfo or /hub/zigbeeDetails/json. This contains the full Zigbee ID's and is used for name resolution.
 void hubInfoZigbeeResponse1(myData) {
-    tmpDevices = myData.zbDevices
+    def tmpDevices 
+    
+    //Handles a change in the JSON structure between different Hubitat versions.
+    if ( compareVersions(location.hub.firmwareVersionString, "2.3.7.1") >= 0 ) tmpDevices = myData.devices
+    else tmpDevices = myData.zbDevices
+    
     //Remove some unwanted fields
 	tmpDevices.each{ entry ->
 		entry.remove('type')
