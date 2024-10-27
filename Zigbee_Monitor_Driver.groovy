@@ -18,15 +18,16 @@
 *  Version 1.0.3 - Add function compareVersions() to do a precise version comparison between the current firmware version on the box and a reference version, in this case "2.3.7.1".
 *  Version 1.0.4 - Updated logic for checking online\offline status so that a device is marked online as soon as any traffic is received.
 *  Version 1.0.5 - Fixed error on line 502 wich incorrectly calls log.info(...) when it should be log(...).
-*  Version 1.0.6 - Added logica to handle a change in the JSON structure from zbDevices to devices at line 540.
+*  Version 1.0.6 - Added logic to handle a change in the JSON structure from zbDevices to devices at line 540.
+*  Version 1.0.7 - Fixe error in healthCheck routine that would sometimes cause an exception error in the log.
 * 
 *  Authors Notes:
 *  For more information on the Zigbee Monitor Driver see:
 *  Original posting on Hubitat Community forum: https://community.hubitat.com/t/release-zigbee-monitor-driver-like-xray-glasses-for-zigbee-repeaters-and-simple-switches/127676
-*  Zigbee Monitor Documentation: N/A
+*  Zigbee Monitor Documentation: See first three posts at the above URL. No seperate help exists.
 *
-*  Gary Milne - January 24th, 2023 @ 2:26 PM
-*  Build Version 48
+*  Gary Milne - October 26th, 2024 @ 8:04 PM
+*  Build Version 49
 *
 **/
 
@@ -35,8 +36,8 @@ import groovy.transform.Field
 import java.text.SimpleDateFormat
 @Field def ZIGBEE_ERROR_MAP = ["00":"SUCCESS", "80":"INV_REQUESTTYPE", "81":"DEVICE_NOT_FOUND", "82":"INVALID_EP", "83":"NOT_ACTIVE", "84":"NOT_SUPPORTED", "85":"TIMEOUT", "86":"NO_MATCH", "88":"NO_ENTRY", "89":"NO_DESCRIPTOR", "8A":"INSUFFICIENT_SPACE", "8B":"NOT_PERMITTED", "8C":"TABLE_FULL", "8D":"NOT_AUTHORIZED", "8E":"DEVICE_BINDING_TABLE_FULL"]
 @Field def dataSeparatorMap = [0:",", 1:";", 2:":", 3:"|"]
-@Field static final driverVersion = "<b>Zigbee Monitor Driver v1.0.6 (1/24/24)</b>"
-@Field static final driverBuild = 48
+@Field static final driverVersion = "<b>Zigbee Monitor Driver v1.0.7 (10/26/24)</b>"
+@Field static final driverBuild = 49
 
 metadata {
     definition (name: "Zigbee Monitor Driver", namespace: "garyjmilne", author: "Gary J. Milne", singleThreaded:true, importUrl: "https://raw.githubusercontent.com/GaryMilne/Hubitat-Zigbee/main/Zigbee_Monitor_Driver.groovy",) {
@@ -147,8 +148,7 @@ metadata {
     }
 
 def test(){
-    if (state.data.driverVersion == null)  state.data.driverVersion = driverVersion
-    if (state.data.driverBuild == null)  state.data.driverBuild = driverBuild
+    //healthCheck()
 }   
                            
 
@@ -392,8 +392,9 @@ def wipe(category){
 //Note: This command needs a def vs void because the ping() command has a return value and will not work when using the latter.
 def healthCheck(){
     int checkIntervalms = device.currentValue('checkInterval') * 60 * 1000
-    maxInactivity = inactivityLimit.toInteger() * 60 * 1000
-    currentInactivity = now() - state.data.deviceLastZigbeeActivityms
+	maxInactivity = inactivityLimit.toInteger() * 60 * 1000
+	
+	currentInactivity = now() - (state.data.deviceLastZigbeeActivityms ?: 0)
     log("healthCheck","Time since last activity is $currentInactivity ms.", 1)
     
     //If the currentInactivity plus the checkInterval is less than maxInactivity we don't need to do anything except mark it online.
@@ -1017,11 +1018,14 @@ def decodeDeviceRoutingInfo(hexValue) {
     // Route Status (bits 1 - 3)
     switch (routeStatus) {
         case "000":result.routeStatus = "Active"; break //⚡    
-        case "001": result.routeStatus = "Discovery Underway"; break //🔍
         case "010": result.routeStatus = "Discovery Failed"; break //🚫
         case "011": result.routeStatus = "Inactive"; break //💤
         case "100": result.routeStatus = "Validation Underway"; break  //📝
-        case "101" | "110" | "111": result.routeStatus = "Reserved"; break  //❓
+        case "101":
+		case "110":
+		case "111":
+			result.routeStatus = "Reserved"
+			; break  //❓
     }
     // Decode memoryConstrained (bit 4)
     def memoryConstrained = binaryValue[-4]
