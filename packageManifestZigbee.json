@@ -1,10 +1,10 @@
 {
   "packageName": "Zigbee Monitor Driver",
   "author": "Gary J. Milne",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "minimumHEVersion": "0.0",
-  "dateReleased": "2024-1-4",
-  "releaseNotes": "Version 1.0.6: Update to handle change in JSON path around H.E. version 2.3.7.1 that would prevent name resolution from working in newer versions of HE.",
+  "dateReleased": "2024-10-26",
+  "releaseNotes": "Version 1.0.7: Fixes exception error in the helathCheck operation. \n\nVersion 1.0.6: Update to handle change in JSON path around H.E. version 2.3.7.1 that would prevent name resolution from working in newer versions of HE.",
   "drivers": [
     {
       "id": "859bd45a-ea73-46d8-b9fd-d8a5450e87ed",
@@ -12,7 +12,7 @@
       "namespace": "garyjmilne",
       "location": "https://raw.githubusercontent.com/GaryMilne/Hubitat-Zigbee/main/Zigbee_Monitor_Driver.groovy",
       "required": true,
-      "version": "1.0.6"
+      "version": "1.0.7"
     }
   ]
 }
