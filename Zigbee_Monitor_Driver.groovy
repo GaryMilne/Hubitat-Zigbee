@@ -19,15 +19,16 @@
 *  Version 1.0.4 - Updated logic for checking online\offline status so that a device is marked online as soon as any traffic is received.
 *  Version 1.0.5 - Fixed error on line 502 wich incorrectly calls log.info(...) when it should be log(...).
 *  Version 1.0.6 - Added logic to handle a change in the JSON structure from zbDevices to devices at line 540.
-*  Version 1.0.7 - Fixe error in healthCheck routine that would sometimes cause an exception error in the log.
+*  Version 1.0.7 - Fixes error in healthCheck routine that would sometimes cause an exception error in the log.
+*  Version 1.0.8 - Add error handling for rare null error case on line 968 "state.device.controlR.totalEntries = parsed.totalEntries" 
 * 
 *  Authors Notes:
 *  For more information on the Zigbee Monitor Driver see:
 *  Original posting on Hubitat Community forum: https://community.hubitat.com/t/release-zigbee-monitor-driver-like-xray-glasses-for-zigbee-repeaters-and-simple-switches/127676
 *  Zigbee Monitor Documentation: See first three posts at the above URL. No seperate help exists.
 *
-*  Gary Milne - October 26th, 2024 @ 8:04 PM
-*  Build Version 49
+*  Gary Milne - April 20th, 2025 @ 6:50 PM PM
+*  Build Version 50
 *
 **/
 
@@ -36,8 +37,8 @@ import groovy.transform.Field
 import java.text.SimpleDateFormat
 @Field def ZIGBEE_ERROR_MAP = ["00":"SUCCESS", "80":"INV_REQUESTTYPE", "81":"DEVICE_NOT_FOUND", "82":"INVALID_EP", "83":"NOT_ACTIVE", "84":"NOT_SUPPORTED", "85":"TIMEOUT", "86":"NO_MATCH", "88":"NO_ENTRY", "89":"NO_DESCRIPTOR", "8A":"INSUFFICIENT_SPACE", "8B":"NOT_PERMITTED", "8C":"TABLE_FULL", "8D":"NOT_AUTHORIZED", "8E":"DEVICE_BINDING_TABLE_FULL"]
 @Field def dataSeparatorMap = [0:",", 1:";", 2:":", 3:"|"]
-@Field static final driverVersion = "<b>Zigbee Monitor Driver v1.0.7 (10/26/24)</b>"
-@Field static final driverBuild = 49
+@Field static final driverVersion = "<b>Zigbee Monitor Driver v1.0.8 (4/20/25)</b>"
+@Field static final driverBuild = 50
 
 metadata {
     definition (name: "Zigbee Monitor Driver", namespace: "garyjmilne", author: "Gary J. Milne", singleThreaded:true, importUrl: "https://raw.githubusercontent.com/GaryMilne/Hubitat-Zigbee/main/Zigbee_Monitor_Driver.groovy",) {
@@ -961,11 +962,12 @@ def parseDeviceRoutingQuery(hexString){
         log("parseDeviceRoutingQuery","An error was encountered retrieving the routing table. $errorText", 0)
         return
     }
-    //If we get this far we should have properly formed data.    
+ 
+    //If we get this far we should have properly formed data.    	  
     parsed.status = Integer.parseInt(hexString.substring(2, 4), 16)
     parsed.startIndex = Integer.parseInt(hexString.substring(4, 6), 16)
     parsed.totalEntries = Integer.parseInt(hexString.substring(6, 8), 16)
-    state.device.controlR.totalEntries = parsed.totalEntries
+    state?.device?.controlR != null && parsed?.totalEntries != null ? state.device.controlR.totalEntries = parsed.totalEntries : null
     parsed.listCount = Integer.parseInt(hexString.substring(8, 10), 16)
     //parsed.unknown = Integer.parseInt(hexString.substring(8, 10), 16)
     log("parseDeviceRoutingQuery", "startIndex: $parsed.startIndex - Status: $parsed.status - Entries: $parsed.totalEntries - Index: $parsed.startIndex - ListCount: $parsed.listCount", 2)
